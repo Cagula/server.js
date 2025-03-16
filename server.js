@@ -2,29 +2,29 @@ const express = require('express');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
-const app = express(); // Inizializza l'app Express
+const app = express(); // Crea un'applicazione Express
 const port = process.env.PORT || 3000;
 
-// Configurazione del client WhatsApp con autenticazione locale
+// Configura il client WhatsApp con autenticazione locale
 const client = new Client({
-    authStrategy: new LocalAuth() // Salva l'autenticazione nel file system
+    authStrategy: new LocalAuth() // Salva le credenziali in locale per sessioni persistenti
 });
 
-// Middleware per il parsing del corpo delle richieste JSON
+// Middleware per gestire il corpo delle richieste in formato JSON
 app.use(express.json());
 
-// Gestione del codice QR per la connessione iniziale
+// Evento: Mostra il codice QR per la connessione
 client.on('qr', (qr) => {
     console.log('Scansiona il seguente codice QR per connetterti a WhatsApp:');
     qrcode.generate(qr, { small: true });
 });
 
-// Evento: Connessione completata
+// Evento: Client pronto
 client.on('ready', () => {
-    console.log('Client WhatsApp pronto per inviare messaggi.');
+    console.log('Client WhatsApp connesso e pronto per inviare messaggi.');
 });
 
-// Evento: Gestione di errori generali nel client
+// Gestione degli errori del client
 client.on('error', (error) => {
     console.error('Errore con il client WhatsApp:', error);
 });
@@ -33,24 +33,23 @@ client.on('error', (error) => {
 app.post('/send-message', async (req, res) => {
     const { targetNumber, messageText, delayInSeconds } = req.body;
 
-    // Validazione dei parametri della richiesta
+    // Verifica che i campi siano completi
     if (!targetNumber || !messageText || typeof delayInSeconds === 'undefined') {
         return res.status(400).send('Tutti i campi sono obbligatori: targetNumber, messageText e delayInSeconds.');
     }
 
     try {
-        // Imposta un ritardo prima di inviare il messaggio
+        // Imposta un ritardo per l'invio del messaggio
         setTimeout(() => {
             client.sendMessage(`${targetNumber}@c.us`, messageText)
                 .then(() => {
-                    console.log(`Messaggio inviato correttamente a ${targetNumber}: ${messageText}`);
+                    console.log(`Messaggio inviato con successo a ${targetNumber}: ${messageText}`);
                 })
                 .catch((error) => {
                     console.error(`Errore durante l'invio del messaggio a ${targetNumber}:`, error);
                 });
         }, delayInSeconds * 1000);
 
-        // Risposta immediata al client
         res.send(`Il messaggio sarà inviato a ${targetNumber} dopo ${delayInSeconds} secondi.`);
     } catch (error) {
         console.error('Errore interno del server:', error);
@@ -60,3 +59,8 @@ app.post('/send-message', async (req, res) => {
 
 // Avvia il server Express
 app.listen(port, () => {
+    console.log(`Server avviato e in ascolto sulla porta ${port}`);
+});
+
+// Inizializza il client WhatsApp
+client.initialize();
